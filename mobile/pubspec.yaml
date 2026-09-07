@@ -1,0 +1,55 @@
+name: knightmarket
+description: KnightMarket - Buy & Sell Near Campus
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # Navigation
+  go_router: ^14.6.3
+
+  # HTTP client
+  dio: ^5.7.0
+  http: ^1.2.2
+
+  # Secure storage for JWT
+  flutter_secure_storage: ^9.2.2
+
+  # Maps (OpenStreetMap - free, no API key)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Real-time Socket.IO
+  socket_io_client: ^2.0.3+1
+
+  # Image handling
+  cached_network_image: ^3.4.1
+  image_picker: ^1.1.2
+
+  # Utilities
+  intl: ^0.20.2
+  url_launcher: ^6.3.1
+  shimmer: ^3.0.0
+  smooth_page_indicator: ^1.2.0+3
+  badges: ^3.1.2
+
+dependency_overrides:
+  win32: ^5.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
