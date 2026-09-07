@@ -89,13 +89,13 @@ A two-part monorepo: a Flutter client and a Node/Express API, talking over a ver
 interface plus a persistent WebSocket connection for anything real-time.
 
 ```
-┌─────────────────┐        HTTPS/REST         ┌──────────────────┐
-│  Flutter mobile  │ ───────────────────────▶  │  Express API      │
-│  (iOS/Android)   │ ◀───────────────────────  │                    │
-│                  │                            │                    │
-│                  │        WebSocket           │                    │
-│                  │ ◀════════════════════════▶ │  Socket.IO server  │
-└─────────────────┘                            └─────────┬────────┘
+┌──────────────-───┐        HTTPS/REST          ┌──────────────────┐
+│  Flutter mobile  │ ───────────────────────▶   │  Express API     │
+│  (iOS/Android)   │ ◀───────────────────────   │                  │
+│                  │                            │                  │
+│                  │        WebSocket           │                  │
+│                  │ ◀════════════════════════▶ │  Socket.IO server│
+└────────────────-─┘                            └─────────--┬──────┘
                                                             │
                                             ┌───────────────┼───────────────┐
                                             ▼               ▼               ▼
