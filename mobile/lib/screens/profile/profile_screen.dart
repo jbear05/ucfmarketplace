@@ -6,6 +6,13 @@ import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../widgets/star_rating.dart';
 
+const _kMonthNames = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+String _formatMonthYear(DateTime date) => '${_kMonthNames[date.month - 1]} ${date.year}';
+
 // Predefined avatars
 const _avatars = [
   {'key': 'student_male',   'label': 'Student M',  'icon': Icons.school_rounded,      'color': Color(0xFF4ECDC4)},
@@ -21,6 +28,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final auth = context.watch<AuthProvider>();
     if (!auth.isAuthenticated) return const _GuestView();
     return _AuthenticatedView(auth: auth);
@@ -32,6 +40,7 @@ class _GuestView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: SafeArea(
@@ -42,14 +51,14 @@ class _GuestView extends StatelessWidget {
             children: [
               Container(
                 width: 80, height: 80,
-                decoration: const BoxDecoration(color: AppTheme.primaryLight, shape: BoxShape.circle),
-                child: const Icon(Icons.person_rounded, size: 44, color: AppTheme.primary),
+                decoration: BoxDecoration(color: AppTheme.primaryLight, shape: BoxShape.circle),
+                child: Icon(Icons.person_rounded, size: 44, color: AppTheme.primary),
               ),
               const SizedBox(height: 24),
-              const Text('Sign in to KnightMarket',
+              Text('Sign in to KnightMarket',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               const SizedBox(height: 8),
-              const Text('Create an account or log in to save listings, send messages, and list your place.',
+              Text('Create an account or log in to save listings, send messages, and list your place.',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
               const SizedBox(height: 32),
@@ -72,6 +81,7 @@ class _AuthenticatedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final user      = auth.user!;
     final avatarKey = user.avatarKey;
     final avatarData = _avatars.firstWhere(
@@ -97,14 +107,17 @@ class _AuthenticatedView extends StatelessWidget {
                       CircleAvatar(
                         radius: 36,
                         backgroundColor: (avatarData['color'] as Color).withValues(alpha: 0.2),
-                        child: Icon(avatarData['icon'] as IconData,
-                            size: 36, color: avatarData['color'] as Color),
+                        backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+                        child: user.avatarUrl != null
+                            ? null
+                            : Icon(avatarData['icon'] as IconData,
+                                size: 36, color: avatarData['color'] as Color),
                       ),
                       Positioned(
                         bottom: 0, right: 0,
                         child: Container(
                           width: 22, height: 22,
-                          decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
                           child: const Icon(Icons.edit_rounded, size: 13, color: Colors.black),
                         ),
                       ),
@@ -117,15 +130,15 @@ class _AuthenticatedView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(user.name,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                       const SizedBox(height: 2),
-                      Text(user.email, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                      Text(user.email, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                       const SizedBox(height: 6),
                       Row(children: [
                         if (user.isVerifiedStudent) ...[
-                          const Icon(Icons.verified_rounded, size: 14, color: AppTheme.primary),
+                          Icon(Icons.verified_rounded, size: 14, color: AppTheme.primary),
                           const SizedBox(width: 4),
-                          const Text('Verified Student',
+                          Text('Verified Student',
                               style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w500)),
                           const SizedBox(width: 12),
                         ],
@@ -136,12 +149,17 @@ class _AuthenticatedView extends StatelessWidget {
                               color: AppTheme.accent.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text('Admin',
+                            child: Text('Admin',
                                 style: TextStyle(fontSize: 11, color: AppTheme.accent, fontWeight: FontWeight.w600)),
                           ),
                       ]),
                       const SizedBox(height: 4),
                       StarRatingDisplay(rating: user.ratingAvg, count: user.ratingCount),
+                      if (user.createdAt != null) ...[
+                        const SizedBox(height: 4),
+                        Text('Member since ${_formatMonthYear(user.createdAt!)}',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textLight)),
+                      ],
                     ],
                   ),
                 ),
@@ -160,8 +178,14 @@ class _AuthenticatedView extends StatelessWidget {
                 label: 'My Listings',
                 onTap: () => context.push('/my-listings'),
               ),
+              Divider(height: 1, indent: 56, color: AppTheme.border),
+              _MenuItem(
+                icon: Icons.settings_outlined,
+                label: 'Settings',
+                onTap: () => context.push('/settings'),
+              ),
               if (user.isAdmin) ...[
-                const Divider(height: 1, indent: 56, color: AppTheme.border),
+                Divider(height: 1, indent: 56, color: AppTheme.border),
                 _MenuItem(
                   icon: Icons.admin_panel_settings_rounded,
                   label: 'Admin Dashboard',
@@ -169,13 +193,13 @@ class _AuthenticatedView extends StatelessWidget {
                   onTap: () => context.push('/admin'),
                 ),
               ],
-              const Divider(height: 1, indent: 56, color: AppTheme.border),
+              Divider(height: 1, indent: 56, color: AppTheme.border),
               _MenuItem(
                 icon: Icons.support_agent_rounded,
                 label: 'Contact Admin',
                 onTap: () => _showContactAdmin(context),
               ),
-              const Divider(height: 1, indent: 56, color: AppTheme.border),
+              Divider(height: 1, indent: 56, color: AppTheme.border),
               _MenuItem(
                 icon: Icons.logout_rounded,
                 label: 'Log Out',
@@ -186,7 +210,7 @@ class _AuthenticatedView extends StatelessWidget {
           ),
 
           const SizedBox(height: 32),
-          const Center(child: Text('KnightMarket v1.0.0',
+          Center(child: Text('KnightMarket v1.0.0',
               style: TextStyle(fontSize: 12, color: AppTheme.textLight))),
           const SizedBox(height: 32),
         ],
@@ -210,7 +234,7 @@ class _AuthenticatedView extends StatelessWidget {
             Center(child: Container(width: 40, height: 4,
                 decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('Choose Avatar',
+            Text('Choose Avatar',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             const SizedBox(height: 20),
             GridView.count(
@@ -244,7 +268,7 @@ class _AuthenticatedView extends StatelessWidget {
                         Icon(a['icon'] as IconData, size: 32, color: a['color'] as Color),
                         const SizedBox(height: 6),
                         Text(a['label'] as String,
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                       ],
                     ),
                   ),
@@ -282,10 +306,10 @@ class _AuthenticatedView extends StatelessWidget {
             Center(child: Container(width: 40, height: 4,
                 decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 16),
-            const Text('Contact Admin',
+            Text('Contact Admin',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             const SizedBox(height: 6),
-            const Text('Send us a message and we\'ll get back to you.',
+            Text('Send us a message and we\'ll get back to you.',
                 style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             const SizedBox(height: 16),
             TextField(
@@ -346,13 +370,13 @@ class _AuthenticatedView extends StatelessWidget {
                 color: AppTheme.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.logout_rounded, color: AppTheme.error, size: 28),
+              child: Icon(Icons.logout_rounded, color: AppTheme.error, size: 28),
             ),
             const SizedBox(height: 16),
-            const Text('Log Out?',
+            Text('Log Out?',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             const SizedBox(height: 6),
-            const Text('You can always log back in.',
+            Text('You can always log back in.',
                 style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
             const SizedBox(height: 24),
             SizedBox(
@@ -381,7 +405,7 @@ class _AuthenticatedView extends StatelessWidget {
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel', style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
+                child: Text('Cancel', style: TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
               ),
             ),
           ],
@@ -405,7 +429,7 @@ class _MenuItem extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: color ?? AppTheme.textSecondary, size: 22),
       title: Text(label, style: TextStyle(fontSize: 15, color: c)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textLight),
+      trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textLight),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     );

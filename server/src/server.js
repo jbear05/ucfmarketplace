@@ -17,6 +17,8 @@ const listingRoutes      = require('./routes/listings');
 const chatRoutes         = require('./routes/chat');
 const adminRoutes        = require('./routes/admin');
 const ratingRoutes       = require('./routes/ratings');
+const userRoutes         = require('./routes/users');
+const savedSearchRoutes  = require('./routes/savedSearches');
 
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app    = express();
@@ -114,6 +116,8 @@ app.use('/api/listings',     listingRoutes);
 app.use('/api/threads',      chatRoutes);
 app.use('/api/admin',        adminRoutes);
 app.use('/api/ratings',      ratingRoutes);
+app.use('/api/users',        userRoutes);
+app.use('/api/saved-searches', savedSearchRoutes);
 
 // Health check — for Railway deployment monitoring
 app.get('/health', (_req, res) => {

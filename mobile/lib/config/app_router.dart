@@ -16,6 +16,10 @@ import '../screens/chat/chat_thread_screen.dart';
 import '../screens/favorites/favorites_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/legal/community_rules_screen.dart';
+import '../screens/profile/seller_profile_screen.dart';
+import '../screens/profile/settings_screen.dart';
+import '../screens/profile/photo_prompt_screen.dart';
 import '../widgets/main_shell.dart';
 
 final _rootNavigatorKey    = GlobalKey<NavigatorState>();
@@ -51,6 +55,16 @@ GoRouter createRouter(AuthProvider auth) => GoRouter(
     GoRoute(path: '/login',           builder: (c, s) => const LoginScreen()),
     GoRoute(path: '/register',        builder: (c, s) => const RegisterScreen()),
     GoRoute(path: '/forgot-password', builder: (c, s) => const ForgotPasswordScreen()),
+    GoRoute(path: '/community-rules', builder: (c, s) => const CommunityRulesScreen()),
+    GoRoute(
+      path: '/users/:id',
+      builder: (c, s) => SellerProfileScreen(userId: s.pathParameters['id']!),
+    ),
+    GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
+    GoRoute(
+      path: '/photo-prompt',
+      builder: (c, s) => PhotoPromptScreen(continueTo: s.extra as String? ?? '/'),
+    ),
     GoRoute(path: '/create',          builder: (c, s) => const CreateListingScreen()),
     GoRoute(
       path: '/listings/:id',

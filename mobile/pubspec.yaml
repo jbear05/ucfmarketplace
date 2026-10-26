@@ -29,6 +29,9 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
+  # Device location ("Closest to Me" sort)
+  geolocator: ^14.1.2
+
   # Real-time Socket.IO
   socket_io_client: ^2.0.3+1
 

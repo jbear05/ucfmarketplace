@@ -83,6 +83,17 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  /// Posts the user's phone number as a regular message in this thread only.
+  /// Returns an error message, or null on success.
+  Future<String?> shareContact(String threadId, String phone) async {
+    final digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length < 10 || digits.length > 15) {
+      return 'Enter a valid phone number';
+    }
+    final msg = await sendMessage(threadId, '📞 My number: ${phone.trim()}');
+    return msg == null ? 'Failed to share your number' : null;
+  }
+
   Future<Thread?> createThread(String listingId, {String message = 'Hi, I am interested in your listing!'}) async {
     try {
       final res = await _api.post('/threads', data: {'listingId': listingId, 'message': message});
@@ -117,15 +128,15 @@ class ChatProvider extends ChangeNotifier {
 
   Future<String?> proposeMeetup(String threadId, {
     required String address,
-    required double lat,
-    required double lng,
+    double? lat,
+    double? lng,
     DateTime? scheduledAt,
   }) async {
     try {
       final res = await _api.patch('/threads/$threadId/meetup', data: {
         'address': address,
-        'lat': lat,
-        'lng': lng,
+        if (lat != null) 'lat': lat,
+        if (lng != null) 'lng': lng,
         if (scheduledAt != null) 'scheduledAt': scheduledAt.toIso8601String(),
       });
       final thread = Thread.fromJson(res.data['data']['thread']);

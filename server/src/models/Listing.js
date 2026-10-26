@@ -7,6 +7,9 @@ const CATEGORIES = [
 
 const CONDITIONS = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
+// Must match kListingCampuses in mobile/lib/models/listing.dart
+const CAMPUSES = ['Main Campus', 'Downtown', 'Rosen', 'Lake Nona'];
+
 const listingSchema = new mongoose.Schema(
   {
     owner: {
@@ -43,17 +46,24 @@ const listingSchema = new mongoose.Schema(
       enum:     CONDITIONS,
     },
 
-    // ── Meetup area ───────────────────────────────────────────────────────────
-    // A general public area, not an exact address — e.g. "Near the Student Union"
-    // or "Knights Plaza". Geocoded (approximately) so it can show as a map pin.
-    // The exact meeting spot/time is arranged per-conversation on the Thread.
-    meetupArea: {
-      type:     String,
-      required: [true, 'A general meetup area is required'],
-      trim:     true,
+    // ── Location ──────────────────────────────────────────────────────────────
+    // Which UCF campus the seller is on. The exact meeting spot/time is
+    // arranged per-conversation on the Thread from a curated list of spots.
+    campus: {
+      type:    String,
+      enum:    CAMPUSES,
+      default: 'Main Campus',
     },
 
-    // GeoJSON point — auto-populated from meetupArea via Nominatim geocoding
+    // Legacy free-text area (e.g. "Near the Student Union") from before
+    // campuses existed. New listings set it to the campus name.
+    meetupArea: {
+      type: String,
+      trim: true,
+    },
+
+    // GeoJSON point — the campus center for new listings, or the geocoded
+    // meetupArea for older ones
     coordinates: {
       type: {
         type:   String,
@@ -74,6 +84,12 @@ const listingSchema = new mongoose.Schema(
         validator: (arr) => arr.length >= 1,
         message:   'At least one image is required',
       },
+    },
+
+    // Disclosure for AI-generated artwork or prints — buyers can filter these out
+    isAiGenerated: {
+      type:    Boolean,
+      default: false,
     },
 
     // ── Social ────────────────────────────────────────────────────────────────
@@ -102,6 +118,18 @@ const listingSchema = new mongoose.Schema(
       default: null,
     },
 
+    // ── Price-drop alerts ─────────────────────────────────────────────────────
+    // Set when the owner lowers the price; the daily alert job emails users
+    // who favorited the listing, then clears priceDroppedAt.
+    previousPrice: {
+      type:    Number,
+      default: null,
+    },
+    priceDroppedAt: {
+      type:    Date,
+      default: null,
+    },
+
     // ── Expiry ────────────────────────────────────────────────────────────────
     // Set to createdAt + 90 days on create. Cron job checks daily.
     expiresAt: {
@@ -120,6 +148,7 @@ listingSchema.index({ status: 1, category: 1 });           // category filter
 listingSchema.index({ owner: 1 });                         // my listings
 listingSchema.index({ expiresAt: 1 });                     // cron expiry check
 listingSchema.index({ boostedUntil: 1, createdAt: -1 });   // boosted sort
+listingSchema.index({ priceDroppedAt: 1 });                // price-drop alert job
 
 // ── Pre-save: set expiresAt on first create ───────────────────────────────────
 listingSchema.pre('save', function (next) {
@@ -138,5 +167,6 @@ listingSchema.virtual('isBoosted').get(function () {
 
 listingSchema.statics.CATEGORIES = CATEGORIES;
 listingSchema.statics.CONDITIONS = CONDITIONS;
+listingSchema.statics.CAMPUSES   = CAMPUSES;
 
 module.exports = mongoose.model('Listing', listingSchema);

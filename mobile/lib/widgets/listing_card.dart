@@ -53,6 +53,7 @@ class _ListingCardState extends State<ListingCard> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final auth       = context.watch<AuthProvider>();
     final isOwn      = auth.user?.id == widget.listing.owner?.id;
     final isFavorited = auth.isFavorited(widget.listing.id);
@@ -82,12 +83,12 @@ class _ListingCardState extends State<ListingCard> {
                             placeholder: (_, __) => Container(color: AppTheme.bgElevated),
                             errorWidget: (_, __, ___) => Container(
                               color: AppTheme.bgElevated,
-                              child: const Icon(Icons.home_rounded, color: AppTheme.textMuted, size: 40),
+                              child: Icon(Icons.home_rounded, color: AppTheme.textMuted, size: 40),
                             ),
                           )
                         : Container(
                             color: AppTheme.bgElevated,
-                            child: const Icon(Icons.home_rounded, color: AppTheme.textMuted, size: 40),
+                            child: Icon(Icons.home_rounded, color: AppTheme.textMuted, size: 40),
                           ),
                   ),
 
@@ -103,6 +104,22 @@ class _ListingCardState extends State<ListingCard> {
                         ),
                         child: const Text('⚡ Featured',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black87)),
+                      ),
+                    ),
+
+                  // AI-generated disclosure — top left, below Featured if both present
+                  if (widget.listing.isAiGenerated)
+                    Positioned(
+                      top: widget.listing.isBoosted ? 40 : 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text('✨ AI-generated',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
                       ),
                     ),
 
@@ -132,7 +149,7 @@ class _ListingCardState extends State<ListingCard> {
                               ? Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.favorite_rounded, size: 12, color: AppTheme.error),
+                                    Icon(Icons.favorite_rounded, size: 12, color: AppTheme.error),
                                     const SizedBox(width: 2),
                                     Text('$_favCount',
                                         style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
@@ -163,7 +180,7 @@ class _ListingCardState extends State<ListingCard> {
                           color: Colors.black.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text('✓ Student',
+                        child: Text('✓ Student',
                             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.primary)),
                       ),
                     ),
@@ -182,18 +199,18 @@ class _ListingCardState extends State<ListingCard> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text('\$${widget.listing.price.toStringAsFixed(0)}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primary)),
                       const Spacer(),
                       _StatusDot(status: widget.listing.status),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(widget.listing.title,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
-                  Text(widget.listing.meetupArea,
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  Text(widget.listing.campus,
+                      style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 6),
                   Wrap(
@@ -218,7 +235,7 @@ class _ListingCardState extends State<ListingCard> {
       color: Colors.white.withValues(alpha: 0.06),
       borderRadius: BorderRadius.circular(6),
     ),
-    child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+    child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
   );
 }
 

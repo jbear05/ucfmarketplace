@@ -35,6 +35,20 @@ const List<String> kListingCategories = [
 
 const List<String> kListingConditions = ['New', 'Like New', 'Good', 'Fair', 'Poor'];
 
+// Must match CAMPUSES in server/src/models/Listing.js
+const List<String> kListingCampuses = ['Main Campus', 'Downtown', 'Rosen', 'Lake Nona'];
+
+const List<String> kListingSortOptions = ['newest', 'price_asc', 'price_desc', 'closest'];
+
+String listingSortLabel(String sortBy) {
+  switch (sortBy) {
+    case 'price_asc':  return 'Price: Low to High';
+    case 'price_desc': return 'Price: High to Low';
+    case 'closest':    return 'Closest to Me';
+    default:           return 'Newest';
+  }
+}
+
 class Listing {
   final String id;
   final String title;
@@ -43,6 +57,8 @@ class Listing {
   final String category;
   final String condition;
   final String meetupArea;
+  final String campus;
+  final bool isAiGenerated;
   final List<String> images;
   final String status;
   final ListingOwner? owner;
@@ -59,6 +75,8 @@ class Listing {
     required this.category,
     required this.condition,
     required this.meetupArea,
+    this.campus = 'Main Campus',
+    this.isAiGenerated = false,
     required this.images,
     required this.status,
     this.owner,
@@ -74,6 +92,7 @@ class Listing {
   Listing copyWith({String? status}) => Listing(
     id: id, title: title, description: description, price: price,
     category: category, condition: condition, meetupArea: meetupArea,
+    campus: campus, isAiGenerated: isAiGenerated,
     images: images, status: status ?? this.status, owner: owner,
     coordinates: coordinates, isBoosted: isBoosted,
     createdAt: createdAt, favoriteCount: favoriteCount,
@@ -97,6 +116,9 @@ class Listing {
       category:    json['category'] ?? 'Other',
       condition:   json['condition'] ?? 'Good',
       meetupArea:  json['meetupArea'] ?? '',
+      // Listings created before campuses existed only have a free-text meetupArea
+      campus:      json['campus'] ?? 'Main Campus',
+      isAiGenerated: json['isAiGenerated'] ?? false,
       images:      List<String>.from(json['images'] ?? []),
       status:      json['status'] ?? 'active',
       owner:       ownerData is Map ? ListingOwner.fromJson(ownerData as Map<String, dynamic>) : null,

@@ -25,6 +25,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final provider = context.watch<ListingsProvider>();
 
     return Scaffold(
@@ -40,23 +41,23 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         ],
       ),
       body: provider.isLoading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppTheme.primary))
           : provider.myListings.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.sell_outlined,
+                      Icon(Icons.sell_outlined,
                           size: 52, color: AppTheme.textLight),
                       const SizedBox(height: 16),
-                      const Text("You haven't listed anything yet",
+                      Text("You haven't listed anything yet",
                           style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary)),
                       const SizedBox(height: 6),
-                      const Text('Tap + to list your first item',
+                      Text('Tap + to list your first item',
                           style: TextStyle(
                               fontSize: 14, color: AppTheme.textSecondary)),
                       const SizedBox(height: 24),
@@ -198,7 +199,7 @@ class _MyListingTile extends StatelessWidget {
                           )
                         : Container(
                             color: AppTheme.divider,
-                            child: const Icon(Icons.home_rounded,
+                            child: Icon(Icons.home_rounded,
                                 color: AppTheme.textLight)),
                   ),
                 ),
@@ -212,7 +213,7 @@ class _MyListingTile extends StatelessWidget {
                           listing.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppTheme.textPrimary),
@@ -220,7 +221,7 @@ class _MyListingTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           '\$${listing.price.toStringAsFixed(0)} • ${listing.category}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12, color: AppTheme.textSecondary),
                         ),
                         const SizedBox(height: 6),

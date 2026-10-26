@@ -24,7 +24,8 @@ const register = async (req, res) => {
       return errorResponse(res, 'An account with this email already exists', 409);
     }
 
-    // Auto-detect verified student via .edu email
+    // Registration is limited to UCF emails (see registerRules), so every
+    // new account is a verified student
     const isVerifiedStudent = email.toLowerCase().endsWith('.edu');
 
     // Generate email confirmation token
@@ -37,6 +38,7 @@ const register = async (req, res) => {
       passwordHash:       password, // pre-save hook hashes this
       isVerifiedStudent,
       emailConfirmToken,
+      agreedToRulesAt: new Date(), // registerRules rejects the request unless agreedToRules is true
       // Auto-promote if email matches ADMIN_EMAIL env
       role: email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
         ? 'admin'
@@ -54,9 +56,7 @@ const register = async (req, res) => {
     return successResponse(
       res,
       {
-        message: isVerifiedStudent
-          ? 'Account created! Check your email to verify. Your .edu email gives you a Verified Student badge.'
-          : 'Account created! Check your email to verify your account.',
+        message: 'Account created! Check your email to verify your account.',
       },
       'Registration successful',
       201
@@ -167,13 +167,42 @@ const getMe = async (req, res) => {
   }
 };
 
+// ── PUT /api/auth/me ──────────────────────────────────────────────────────────
 const updateMe = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, classYear, emailPriceDrop } = req.body;
     const updates = {};
     if (name && name.trim()) updates.name = name.trim();
+    if (classYear !== undefined) updates.classYear = String(classYear).trim();
+    if (emailPriceDrop !== undefined) updates.emailPriceDrop = emailPriceDrop === true || emailPriceDrop === 'true';
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).populate('favorites');
     return successResponse(res, { user: user.toPublicProfile() });
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+// ── POST /api/auth/me/avatar ──────────────────────────────────────────────────
+// Multipart field "avatar" — uploaded to Cloudinary by the uploadAvatar middleware
+const uploadMyAvatar = async (req, res) => {
+  try {
+    if (!req.file) return errorResponse(res, 'Choose an image to upload', 400);
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { avatarUrl: req.file.path, hasSeenPhotoPrompt: true },
+      { new: true }
+    ).populate('favorites');
+    return successResponse(res, { user: user.toPublicProfile() }, 'Profile photo updated');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+// ── POST /api/auth/me/photo-prompt-seen ───────────────────────────────────────
+const markPhotoPromptSeen = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { hasSeenPhotoPrompt: true });
+    return successResponse(res, null, 'OK');
   } catch (err) {
     return errorResponse(res, err.message);
   }
@@ -288,6 +317,8 @@ const resendVerification = async (req, res) => {
 
 module.exports = {
   updateMe,
+  uploadMyAvatar,
+  markPhotoPromptSeen,
   register,
   verifyEmail,
   login,

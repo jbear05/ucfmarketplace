@@ -14,9 +14,89 @@ class MapScreen extends StatefulWidget {
   State<MapScreen> createState() => _MapScreenState();
 }
 
+/// Listings sharing the same coordinate (now always a campus center, since
+/// public location is campus-level only) grouped into one pin instead of
+/// silently occluding each other.
+class _MarkerGroup {
+  final LatLng point;
+  final List<Listing> listings;
+  _MarkerGroup(this.point, this.listings);
+}
+
 class _MapScreenState extends State<MapScreen> {
   final _mapController = MapController();
   Listing? _selectedListing;
+
+  List<_MarkerGroup> _groupByCoordinate(List<Listing> listings) {
+    final groups = <String, _MarkerGroup>{};
+    for (final l in listings) {
+      final key = '${l.coordinates!.lat.toStringAsFixed(5)},${l.coordinates!.lng.toStringAsFixed(5)}';
+      groups.putIfAbsent(
+        key,
+        () => _MarkerGroup(LatLng(l.coordinates!.lat, l.coordinates!.lng), []),
+      ).listings.add(l);
+    }
+    return groups.values.toList();
+  }
+
+  void _openClusterSheet(BuildContext context, _MarkerGroup group) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          constraints: const BoxConstraints(maxHeight: 420),
+          decoration: BoxDecoration(
+            color: AppTheme.bgCard,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Text(
+                  '${group.listings.length} listings · ${group.listings.first.campus}',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                ),
+              ),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: group.listings.length,
+                  itemBuilder: (_, i) {
+                    final listing = group.listings[i];
+                    return ListTile(
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 44, height: 44,
+                          child: listing.mainImage.isNotEmpty
+                              ? CachedNetworkImage(imageUrl: listing.mainImage, fit: BoxFit.cover)
+                              : Container(color: AppTheme.bgElevated,
+                                  child: Icon(Icons.home_rounded, color: AppTheme.textLight, size: 18)),
+                        ),
+                      ),
+                      title: Text(listing.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+                      subtitle: Text('\$${listing.price.toStringAsFixed(0)}',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        setState(() => _selectedListing = listing);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -64,6 +144,7 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final provider      = context.watch<ListingsProvider>();
     final category      = provider.filters.category;
     final validListings = provider.mapListings
@@ -85,62 +166,93 @@ class _MapScreenState extends State<MapScreen> {
                 userAgentPackageName: 'com.knightmarket.app',
               ),
               MarkerLayer(
-                markers: validListings.map((listing) {
-                  final isSelected = _selectedListing?.id == listing.id;
-                  final statusColor = listing.status == 'active'
-                      ? const Color(0xFF34C759)
-                      : listing.status == 'pending'
-                          ? const Color(0xFFFFCC00)
-                          : const Color(0xFFFF3B30);
+                markers: _groupByCoordinate(validListings).map((group) {
+                  if (group.listings.length == 1) {
+                    final listing = group.listings.first;
+                    final isSelected = _selectedListing?.id == listing.id;
+                    final statusColor = listing.status == 'active'
+                        ? const Color(0xFF34C759)
+                        : listing.status == 'pending'
+                            ? const Color(0xFFFFCC00)
+                            : const Color(0xFFFF3B30);
+                    return Marker(
+                      point: group.point,
+                      width:  isSelected ? 92 : 82,
+                      height: isSelected ? 40 : 34,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedListing = listing);
+                          _mapController.move(group.point, 14);
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppTheme.primary : AppTheme.bgCard,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 8, offset: const Offset(0, 3),
+                            )],
+                            border: Border.all(
+                              color: isSelected ? AppTheme.primary : AppTheme.border,
+                              width: 2,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 8, height: 8,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [BoxShadow(
+                                    color: statusColor.withValues(alpha: 0.6),
+                                    blurRadius: 4,
+                                  )],
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '\$${listing.price >= 1000 ? '${(listing.price / 1000).toStringAsFixed(listing.price % 1000 == 0 ? 0 : 1)}k' : listing.price.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w700,
+                                  color: isSelected ? Colors.white : AppTheme.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  // Cluster pin — several listings share this campus center.
                   return Marker(
-                    point: LatLng(listing.coordinates!.lat, listing.coordinates!.lng),
-                    width:  isSelected ? 92 : 82,
-                    height: isSelected ? 40 : 34,
+                    point: group.point,
+                    width: 46,
+                    height: 46,
                     child: GestureDetector(
                       onTap: () {
-                        setState(() => _selectedListing = listing);
-                        _mapController.move(
-                          LatLng(listing.coordinates!.lat, listing.coordinates!.lng),
-                          14,
-                        );
+                        _mapController.move(group.point, 14);
+                        _openClusterSheet(context, group);
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isSelected ? AppTheme.primary : AppTheme.bgCard,
-                          borderRadius: BorderRadius.circular(20),
+                          color: AppTheme.primary,
+                          shape: BoxShape.circle,
                           boxShadow: [BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 8, offset: const Offset(0, 3),
+                            color: Colors.black.withValues(alpha: 0.25),
+                            blurRadius: 10, offset: const Offset(0, 3),
                           )],
-                          border: Border.all(
-                            color: isSelected ? AppTheme.primary : AppTheme.border,
-                            width: 2,
-                          ),
+                          border: Border.all(color: AppTheme.bgCard, width: 3),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 8, height: 8,
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                shape: BoxShape.circle,
-                                boxShadow: [BoxShadow(
-                                  color: statusColor.withValues(alpha: 0.6),
-                                  blurRadius: 4,
-                                )],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '\$${listing.price >= 1000 ? '${(listing.price / 1000).toStringAsFixed(listing.price % 1000 == 0 ? 0 : 1)}k' : listing.price.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w700,
-                                color: isSelected ? Colors.white : AppTheme.textPrimary,
-                              ),
-                            ),
-                          ],
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${group.listings.length}',
+                          style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -164,7 +276,7 @@ class _MapScreenState extends State<MapScreen> {
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8)],
                     ),
-                    child: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 20),
+                    child: Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 20),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -177,7 +289,7 @@ class _MapScreenState extends State<MapScreen> {
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 2))],
                     ),
                     child: Row(children: [
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(left: 12),
                         child: Icon(Icons.location_on_rounded, color: AppTheme.primary, size: 18),
                       ),
@@ -185,7 +297,7 @@ class _MapScreenState extends State<MapScreen> {
                       Expanded(
                         child: Text(
                           category != null && category.isNotEmpty ? category : 'All listings',
-                          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -197,7 +309,7 @@ class _MapScreenState extends State<MapScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text('${validListings.length}',
-                            style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 12)),
+                            style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 12)),
                       ),
                     ]),
                   ),
@@ -250,7 +362,7 @@ class _ListingPreviewCard extends StatelessWidget {
                 child: listing.mainImage.isNotEmpty
                     ? CachedNetworkImage(imageUrl: listing.mainImage, fit: BoxFit.cover)
                     : Container(color: AppTheme.bgElevated,
-                        child: const Icon(Icons.home_rounded, color: AppTheme.textLight)),
+                        child: Icon(Icons.home_rounded, color: AppTheme.textLight)),
               ),
             ),
             Expanded(
@@ -260,13 +372,13 @@ class _ListingPreviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('\$${listing.price.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
                     const SizedBox(height: 4),
                     Text(listing.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
                     const SizedBox(height: 4),
                     Text('${listing.category} · ${listing.condition}',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -276,10 +388,10 @@ class _ListingPreviewCard extends StatelessWidget {
               child: Column(children: [
                 GestureDetector(
                   onTap: onClose,
-                  child: const Icon(Icons.close_rounded, color: AppTheme.textLight, size: 20),
+                  child: Icon(Icons.close_rounded, color: AppTheme.textLight, size: 20),
                 ),
                 const SizedBox(height: 16),
-                const Icon(Icons.chevron_right_rounded, color: AppTheme.primary, size: 22),
+                Icon(Icons.chevron_right_rounded, color: AppTheme.primary, size: 22),
               ]),
             ),
           ]),

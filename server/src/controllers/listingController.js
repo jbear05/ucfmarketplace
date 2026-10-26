@@ -1,7 +1,8 @@
 const Listing    = require('../models/Listing');
 const User       = require('../models/User');
 const Thread     = require('../models/Thread');
-const { geocodeArea, UCF_CAMPUS_CENTER } = require('../utils/geocode');
+const { CAMPUS_CENTERS, UCF_CAMPUS_CENTER } = require('../utils/geocode');
+const { buildListingFilter }                 = require('../utils/listingFilter');
 const { successResponse, errorResponse } = require('../utils/response');
 const { cloudinary }                     = require('../config/cloudinary');
 
@@ -24,43 +25,31 @@ const buildSort = (sortBy) => {
 // ── GET /api/listings ─────────────────────────────────────────────────────────
 const getListings = async (req, res) => {
   try {
-    const {
-      page       = 1,
-      limit      = 12,
-      category,
-      condition,
-      minPrice,
-      maxPrice,
-      search,
-      sortBy,
-    } = req.query;
+    const { page = 1, limit = 12, sortBy, lat, lng } = req.query;
 
-    // Build filter — only show active and pending to public
-    const filter = { status: { $in: ['active', 'pending'] } };
+    const filter = buildListingFilter(req.query);
+    const skip   = (parseInt(page) - 1) * parseInt(limit);
+    const total  = await Listing.countDocuments(filter);
 
-    if (category)  filter.category  = category;
-    if (condition) filter.condition = condition;
-    if (search) {
-      filter.$or = [
-        { title:       new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') },
-      ];
-    }
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = parseFloat(minPrice);
-      if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
-    }
+    // "Closest to me" — $near returns results ordered by distance, so it
+    // replaces the normal sort. Without a location, fall back to newest.
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    const byDistance = sortBy === 'closest' && Number.isFinite(userLat) && Number.isFinite(userLng);
 
-    const skip  = (parseInt(page) - 1) * parseInt(limit);
-    const sort  = buildSort(sortBy);
-    const total = await Listing.countDocuments(filter);
+    const query = byDistance
+      ? Listing.find({
+          ...filter,
+          coordinates: {
+            $near: { $geometry: { type: 'Point', coordinates: [userLng, userLat] } },
+          },
+        })
+      : Listing.find(filter).sort(buildSort(sortBy));
 
-    const listings = await Listing.find(filter)
-      .sort(sort)
+    const listings = await query
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('owner', 'name isVerifiedStudent ratingAvg ratingCount')
+      .populate('owner', 'name isVerifiedStudent ratingAvg ratingCount avatarUrl')
       .lean();
 
     // If user is authenticated, mark which listings they've favorited
@@ -145,10 +134,7 @@ const getListing = async (req, res) => {
 // ── POST /api/listings ────────────────────────────────────────────────────────
 const createListing = async (req, res) => {
   try {
-    const {
-      title, description, price, category, condition,
-      meetupArea, confirmedLat, confirmedLon,
-    } = req.body;
+    const { title, description, price, category, condition, campus, isAiGenerated } = req.body;
 
     // Collect uploaded image URLs from Cloudinary (via multer middleware)
     const images = req.files?.map((f) => f.path) || [];
@@ -156,17 +142,8 @@ const createListing = async (req, res) => {
       return errorResponse(res, 'At least one image is required', 400);
     }
 
-    // Use confirmed coordinates from frontend map picker, or fallback to geocoding.
-    // If the free-text area doesn't resolve to a real place, fall back to the
-    // campus center so the listing still gets a usable approximate pin.
-    let coords = null;
-    if (confirmedLat && confirmedLon) {
-      coords = [parseFloat(confirmedLon), parseFloat(confirmedLat)];
-    } else {
-      coords = (await geocodeArea(meetupArea)) || UCF_CAMPUS_CENTER;
-    }
-
-    const coordinates = { type: 'Point', coordinates: coords };
+    // Pin the listing at its campus — the exact spot is agreed in chat
+    const coordinates = { type: 'Point', coordinates: CAMPUS_CENTERS[campus] || UCF_CAMPUS_CENTER };
 
     const listing = await Listing.create({
       owner: req.user._id,
@@ -175,7 +152,9 @@ const createListing = async (req, res) => {
       price: parseFloat(price),
       category,
       condition,
-      meetupArea,
+      campus,
+      meetupArea: campus,
+      isAiGenerated: isAiGenerated === true || isAiGenerated === 'true',
       coordinates,
       images,
     });
@@ -200,18 +179,28 @@ const updateListing = async (req, res) => {
       return errorResponse(res, 'Not authorized to edit this listing', 403);
     }
 
-    const allowed = ['title', 'description', 'price', 'category', 'condition', 'meetupArea'];
+    const oldPrice = listing.price;
+    const allowed  = ['title', 'description', 'price', 'category', 'condition'];
 
     allowed.forEach((field) => {
       if (req.body[field] !== undefined) listing[field] = req.body[field];
     });
+    if (req.body.isAiGenerated !== undefined) {
+      listing.isAiGenerated = req.body.isAiGenerated === true || req.body.isAiGenerated === 'true';
+    }
 
-    // Re-geocode if the meetup area changed
-    if (req.body.meetupArea !== undefined) {
-      const coords = await geocodeArea(listing.meetupArea);
-      if (coords) {
-        listing.coordinates = { type: 'Point', coordinates: coords };
-      }
+    // Moving campus moves the map pin
+    if (req.body.campus !== undefined && req.body.campus !== listing.campus) {
+      listing.campus      = req.body.campus;
+      listing.meetupArea  = req.body.campus;
+      listing.coordinates = { type: 'Point', coordinates: CAMPUS_CENTERS[listing.campus] || UCF_CAMPUS_CENTER };
+    }
+
+    // Record a price drop for the daily alert email to favoriters. Keep the
+    // highest pre-drop price if it drops again before the job runs.
+    if (listing.price < oldPrice) {
+      if (!listing.priceDroppedAt) listing.previousPrice = oldPrice;
+      listing.priceDroppedAt = new Date();
     }
 
     // Handle new images if uploaded
@@ -384,13 +373,14 @@ const toggleFavorite = async (req, res) => {
 // Lightweight endpoint for map pins — just coordinates and price
 const getMapPins = async (req, res) => {
   try {
-    const { category } = req.query;
+    const { category, campus } = req.query;
     const filter = { status: { $in: ['active', 'pending'] } };
 
     if (category) filter.category = category;
+    if (campus)   filter.campus   = campus;
 
     const pins = await Listing.find(filter)
-      .select('_id title price coordinates status images category')
+      .select('_id title price coordinates status images category campus isAiGenerated')
       .lean();
 
     return successResponse(res, { pins });
