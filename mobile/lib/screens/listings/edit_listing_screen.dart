@@ -33,11 +33,12 @@ class _EditListingScreenState extends State<EditListingScreen> {
   final _titleCtrl      = TextEditingController();
   final _descCtrl       = TextEditingController();
   final _priceCtrl      = TextEditingController();
-  final _meetupAreaCtrl = TextEditingController();
 
   String _category  = kListingCategories.first;
+  String _campus    = kListingCampuses.first;
   String _condition = kListingConditions.first;
   String _status     = 'active';
+  bool _isAiGenerated = false;
 
   @override
   void initState() {
@@ -50,7 +51,6 @@ class _EditListingScreenState extends State<EditListingScreen> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _priceCtrl.dispose();
-    _meetupAreaCtrl.dispose();
     super.dispose();
   }
 
@@ -63,10 +63,11 @@ class _EditListingScreenState extends State<EditListingScreen> {
         _titleCtrl.text      = listing.title;
         _descCtrl.text       = listing.description;
         _priceCtrl.text      = listing.price.toStringAsFixed(0);
-        _meetupAreaCtrl.text = listing.meetupArea;
         _category            = listing.category;
+        _campus              = listing.campus;
         _condition           = listing.condition;
         _status              = listing.status;
+        _isAiGenerated       = listing.isAiGenerated;
         _isLoading           = false;
       });
     } else if (mounted) {
@@ -125,8 +126,9 @@ class _EditListingScreenState extends State<EditListingScreen> {
         MapEntry('description', _descCtrl.text.trim()),
         MapEntry('price',       _priceCtrl.text.trim()),
         MapEntry('category',    _category),
+        MapEntry('campus',      _campus),
         MapEntry('condition',   _condition),
-        MapEntry('meetupArea',  _meetupAreaCtrl.text.trim()),
+        MapEntry('isAiGenerated', _isAiGenerated.toString()),
       ]);
       for (final img in _newImages) {
         final bytes = await img.readAsBytes();
@@ -160,8 +162,9 @@ class _EditListingScreenState extends State<EditListingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary)));
+      return Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary)));
     }
     if (_listing == null) {
       return Scaffold(
@@ -177,8 +180,8 @@ class _EditListingScreenState extends State<EditListingScreen> {
           TextButton(
             onPressed: _isSubmitting ? null : _submit,
             child: _isSubmitting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))
-                : const Text('Save', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))
+                : Text('Save', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -189,7 +192,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
           children: [
 
             // ── Basic Info ───────────────────────────────────────
-            const Text('Basic Info', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            Text('Basic Info', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             const SizedBox(height: 12),
             TextFormField(
               controller: _titleCtrl,
@@ -204,7 +207,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
               validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: 16),
-            const Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8, runSpacing: 8,
@@ -213,7 +216,16 @@ class _EditListingScreenState extends State<EditListingScreen> {
               )).toList(),
             ),
             const SizedBox(height: 16),
-            const Text('Condition', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            Text('Campus', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8, runSpacing: 8,
+              children: kListingCampuses.map((c) => _ChoiceChipTile(
+                label: c, selected: _campus == c, onTap: () => setState(() => _campus = c),
+              )).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text('Condition', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8, runSpacing: 8,
@@ -227,20 +239,20 @@ class _EditListingScreenState extends State<EditListingScreen> {
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'Description'),
             ),
-
-            // ── Meetup area ──────────────────────────────────────
-            const SizedBox(height: 24),
-            const Text('Meetup Area', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _meetupAreaCtrl,
-              decoration: const InputDecoration(labelText: 'General Area *'),
-              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _isAiGenerated,
+              onChanged: (v) => setState(() => _isAiGenerated = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              title: Text('Tag as AI-generated', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+              subtitle: Text('Required for AI-generated artwork or prints',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
             ),
 
             // ── Status ───────────────────────────────────────────
             const SizedBox(height: 24),
-            const Text('Status', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            Text('Status', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             const SizedBox(height: 12),
             Row(children: [
               _StatusChip(value: 'active',    selected: _status == 'active',    onTap: () => setState(() => _status = 'active')),
@@ -253,9 +265,9 @@ class _EditListingScreenState extends State<EditListingScreen> {
             // ── Photos ───────────────────────────────────────────
             const SizedBox(height: 24),
             Row(children: [
-              const Text('Photos', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+              Text('Photos', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               const Spacer(),
-              Text('${_existingImages.length + _newImages.length}/3', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('${_existingImages.length + _newImages.length}/3', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ]),
             const SizedBox(height: 12),
             SizedBox(
@@ -270,7 +282,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
                         width: 90, height: 90,
                         margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(border: Border.all(color: AppTheme.border), borderRadius: BorderRadius.circular(12), color: AppTheme.bgCard),
-                        child: const Column(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_photo_alternate_rounded, color: AppTheme.primary, size: 28),
@@ -297,7 +309,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
                           onTap: () => _removeExistingImage(url),
                           child: Container(
                             width: 20, height: 20,
-                            decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
                             child: const Icon(Icons.close_rounded, color: Colors.white, size: 12),
                           ),
                         ),
@@ -326,7 +338,7 @@ class _EditListingScreenState extends State<EditListingScreen> {
                           }),
                           child: Container(
                             width: 20, height: 20,
-                            decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
                             child: const Icon(Icons.close_rounded, color: Colors.white, size: 12),
                           ),
                         ),

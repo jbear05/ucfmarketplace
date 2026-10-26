@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -19,7 +20,8 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
   final _api      = ApiService();
   bool _isSubmitting = false;
 
-  // Images — max 3, cover is index 0 after reorder
+  // Images — max 8, cover is index 0 after reorder
+  static const _maxImages = 8;
   List<XFile>  _images     = [];
   List<Uint8List> _previews = []; // web-safe byte previews
   int _coverIndex           = 0;
@@ -28,35 +30,35 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
   final _titleCtrl      = TextEditingController();
   final _descCtrl       = TextEditingController();
   final _priceCtrl      = TextEditingController();
-  final _meetupAreaCtrl = TextEditingController();
 
   String _category  = kListingCategories.first;
+  String _campus    = kListingCampuses.first;
   String _condition = kListingConditions.first;
+  bool _isAiGenerated = false;
 
   @override
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _priceCtrl.dispose();
-    _meetupAreaCtrl.dispose();
     super.dispose();
   }
 
   // ── Images ───────────────────────────────────────────────────────────────────
   Future<void> _pickImages() async {
-    if (_images.length >= 3) {
+    if (_images.length >= _maxImages) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Maximum 3 photos allowed')),
+        const SnackBar(content: Text('Maximum $_maxImages photos allowed')),
       );
       return;
     }
     final picker = ImagePicker();
-    final picked = await picker.pickMultiImage(imageQuality: 80, limit: 3 - _images.length);
+    final picked = await picker.pickMultiImage(imageQuality: 80, limit: _maxImages - _images.length);
     if (picked.isNotEmpty) {
       final newBytes = await Future.wait(picked.map((x) => x.readAsBytes()));
       setState(() {
-        _images   = [..._images, ...picked].take(3).toList();
-        _previews = [..._previews, ...newBytes].take(3).toList();
+        _images   = [..._images, ...picked].take(_maxImages).toList();
+        _previews = [..._previews, ...newBytes].take(_maxImages).toList();
         if (_coverIndex >= _images.length) _coverIndex = 0;
       });
     }
@@ -80,8 +82,9 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
         MapEntry('description', _descCtrl.text.trim()),
         MapEntry('price',       _priceCtrl.text.trim()),
         MapEntry('category',    _category),
+        MapEntry('campus',      _campus),
         MapEntry('condition',   _condition),
-        MapEntry('meetupArea',  _meetupAreaCtrl.text.trim()),
+        MapEntry('isAiGenerated', _isAiGenerated.toString()),
       ]);
       // Cover first, then the rest
       final ordered = [
@@ -116,6 +119,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('List an Item'),
@@ -147,7 +151,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               },
             ),
             const SizedBox(height: 16),
-            const Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8, runSpacing: 8,
@@ -156,7 +160,16 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               )).toList(),
             ),
             const SizedBox(height: 16),
-            const Text('Condition', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            Text('Campus', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8, runSpacing: 8,
+              children: kListingCampuses.map((c) => _ChoiceChipTile(
+                label: c, selected: _campus == c, onTap: () => setState(() => _campus = c),
+              )).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text('Condition', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.textSecondary)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8, runSpacing: 8,
@@ -170,21 +183,15 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'Description', hintText: 'Describe the item, why you\'re selling, any flaws...'),
             ),
-
-            // ── Meetup area ──────────────────────────────────────
-            const SizedBox(height: 24),
-            _SectionHeader('Meetup Area'),
-            const SizedBox(height: 4),
-            const Text('A general public area where you\'re willing to meet — not your address. You\'ll agree on an exact spot and time in chat.',
-                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _meetupAreaCtrl,
-              decoration: const InputDecoration(
-                labelText: 'General Area *',
-                hintText: 'e.g. Near the Student Union, UCF Main Campus',
-              ),
-              validator: (v) => v == null || v.isEmpty ? 'A general meetup area is required' : null,
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _isAiGenerated,
+              onChanged: (v) => setState(() => _isAiGenerated = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              title: Text('Tag as AI-generated', style: TextStyle(fontSize: 14, color: AppTheme.textPrimary)),
+              subtitle: Text('Required for AI-generated artwork or prints',
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
             ),
 
             // ── Photos ───────────────────────────────────────────
@@ -192,10 +199,10 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
             Row(children: [
               _SectionHeader('Photos'),
               const Spacer(),
-              Text('${_images.length}/3', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text('${_images.length}/$_maxImages', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ]),
             const SizedBox(height: 4),
-            const Text('Max 3 photos. Tap a photo to set it as cover.',
+            Text('Max $_maxImages photos. Tap a photo to set it as cover.',
                 style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
             const SizedBox(height: 12),
             SizedBox(
@@ -203,7 +210,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  if (_images.length < 3)
+                  if (_images.length < _maxImages)
                     GestureDetector(
                       onTap: _pickImages,
                       child: Container(
@@ -214,7 +221,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                           borderRadius: BorderRadius.circular(12),
                           color: AppTheme.bgCard,
                         ),
-                        child: const Column(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_photo_alternate_rounded, color: AppTheme.primary, size: 28),
@@ -255,7 +262,7 @@ class _CreateListingScreenState extends State<CreateListingScreen> {
                               }),
                               child: Container(
                                 width: 20, height: 20,
-                                decoration: const BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
+                                decoration: BoxDecoration(color: AppTheme.error, shape: BoxShape.circle),
                                 child: const Icon(Icons.close_rounded, color: Colors.white, size: 12),
                               ),
                             ),
@@ -307,7 +314,7 @@ class _SectionHeader extends StatelessWidget {
   const _SectionHeader(this.text);
   @override
   Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary));
+      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary));
 }
 
 class _ChoiceChipTile extends StatelessWidget {

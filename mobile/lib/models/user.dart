@@ -6,8 +6,13 @@ class User {
   final bool isAdmin;
   final List<String> favorites;
   final String avatarKey;
+  final String? avatarUrl;
+  final String? classYear;
+  final bool emailPriceDrop;
+  final bool hasSeenPhotoPrompt;
   final double ratingAvg;
   final int ratingCount;
+  final DateTime? createdAt;
 
   User({
     required this.id,
@@ -17,8 +22,13 @@ class User {
     this.isAdmin = false,
     this.favorites = const [],
     this.avatarKey = 'student_male',
+    this.avatarUrl,
+    this.classYear,
+    this.emailPriceDrop = true,
+    this.hasSeenPhotoPrompt = false,
     this.ratingAvg = 0,
     this.ratingCount = 0,
+    this.createdAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -33,14 +43,20 @@ class User {
       return f.toString();
     }).where((id) => id.isNotEmpty).toList(),
     avatarKey:         json['avatarKey'] ?? 'student_male',
+    avatarUrl:         json['avatarUrl'],
+    classYear:         json['classYear'],
+    emailPriceDrop:    json['emailPriceDrop'] ?? true,
+    hasSeenPhotoPrompt: json['hasSeenPhotoPrompt'] ?? false,
     ratingAvg:         (json['ratingAvg'] ?? 0).toDouble(),
     ratingCount:       json['ratingCount'] ?? 0,
+    createdAt:         DateTime.tryParse(json['createdAt'] ?? ''),
   );
 
   User copyWith({
     String? id, String? name, String? email,
     bool? isVerifiedStudent, bool? isAdmin,
-    List<String>? favorites, String? avatarKey,
+    List<String>? favorites, String? avatarKey, String? avatarUrl,
+    String? classYear, bool? emailPriceDrop, bool? hasSeenPhotoPrompt,
     double? ratingAvg, int? ratingCount,
   }) => User(
     id:                id ?? this.id,
@@ -50,7 +66,12 @@ class User {
     isAdmin:           isAdmin ?? this.isAdmin,
     favorites:         favorites ?? this.favorites,
     avatarKey:         avatarKey ?? this.avatarKey,
+    avatarUrl:         avatarUrl ?? this.avatarUrl,
+    classYear:         classYear ?? this.classYear,
+    emailPriceDrop:    emailPriceDrop ?? this.emailPriceDrop,
+    hasSeenPhotoPrompt: hasSeenPhotoPrompt ?? this.hasSeenPhotoPrompt,
     ratingAvg:         ratingAvg ?? this.ratingAvg,
     ratingCount:       ratingCount ?? this.ratingCount,
+    createdAt:         createdAt,
   );
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -19,23 +20,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _registered = false;
   bool _resendLoading = false;
+  bool _agreedToRules = false;
+  bool _showRulesError = false;
+  late final TapGestureRecognizer _rulesLinkRecognizer;
+
+  static final _ucfEmailRe = RegExp(r'^[^\s@]+@(knights\.)?ucf\.edu$', caseSensitive: false);
+
+  @override
+  void initState() {
+    super.initState();
+    _rulesLinkRecognizer = TapGestureRecognizer()
+      ..onTap = () => context.push('/community-rules');
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _rulesLinkRecognizer.dispose();
     super.dispose();
   }
 
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    final formValid = _formKey.currentState!.validate();
+    setState(() => _showRulesError = !_agreedToRules);
+    if (!formValid || !_agreedToRules) return;
 
     final auth = context.read<AuthProvider>();
     final error = await auth.register(
       name: _nameController.text,
       email: _emailController.text,
       password: _passwordController.text,
+      agreedToRules: _agreedToRules,
     );
 
     if (error == null && mounted) {
@@ -49,6 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     if (_registered) {
@@ -67,11 +85,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     color: AppTheme.success.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.mark_email_read_rounded,
+                  child: Icon(Icons.mark_email_read_rounded,
                       size: 44, color: AppTheme.success),
                 ),
                 const SizedBox(height: 24),
-                const Text('Check your email',
+                Text('Check your email',
                     style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -82,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   'Tap it — it will open in your browser to activate your account. '
                   'Then come back here and log in.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
                 ),
                 const SizedBox(height: 32),
@@ -110,7 +128,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   },
                   child: Text(
                     _resendLoading ? 'Sending...' : "Didn't receive it? Resend email",
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                   ),
                 ),
               ],
@@ -149,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           color: Colors.white, size: 22),
                     ),
                     const SizedBox(width: 10),
-                    const Text('KnightMarket',
+                    Text('KnightMarket',
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -157,14 +175,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
                 const SizedBox(height: 32),
-                const Text('Create account',
+                Text('Create account',
                     style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
                         letterSpacing: -0.5)),
                 const SizedBox(height: 6),
-                const Text('Join the student housing community',
+                Text('Join the student housing community',
                     style: TextStyle(
                         fontSize: 15, color: AppTheme.textSecondary)),
                 const SizedBox(height: 32),
@@ -188,13 +206,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   keyboardType: TextInputType.emailAddress,
                   autocorrect: false,
                   decoration: const InputDecoration(
-                    labelText: 'Email',
+                    labelText: 'Knights Email',
                     prefixIcon: Icon(Icons.email_outlined, size: 20),
-                    helperText: 'Use .edu email to get a verified student badge',
+                    helperText: 'Only ucf.edu and knights.ucf.edu are accepted',
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Email is required';
-                    if (!v.contains('@')) return 'Enter a valid email';
+                    if (!_ucfEmailRe.hasMatch(v.trim())) {
+                      return 'Use a ucf.edu or knights.ucf.edu address';
+                    }
                     return null;
                   },
                 ),
@@ -225,7 +245,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: _agreedToRules,
+                        onChanged: (v) => setState(() {
+                          _agreedToRules = v ?? false;
+                          if (_agreedToRules) _showRulesError = false;
+                        }),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() {
+                          _agreedToRules = !_agreedToRules;
+                          if (_agreedToRules) _showRulesError = false;
+                        }),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
+                              children: [
+                                const TextSpan(text: 'I agree to the '),
+                                TextSpan(
+                                  text: 'Community Rules',
+                                  style: TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  recognizer: _rulesLinkRecognizer,
+                                ),
+                                const TextSpan(text: ' — real photos, honest condition, campus meetups.'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_showRulesError) ...[
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: EdgeInsets.only(left: 34),
+                    child: Text('You must agree to the Community Rules',
+                        style: TextStyle(fontSize: 12, color: AppTheme.error)),
+                  ),
+                ],
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -246,11 +321,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Already have an account? ',
+                    Text('Already have an account? ',
                         style: TextStyle(color: AppTheme.textSecondary)),
                     GestureDetector(
                       onTap: () => context.pushReplacement('/login'),
-                      child: const Text('Log in',
+                      child: Text('Log in',
                           style: TextStyle(
                               color: AppTheme.primary,
                               fontWeight: FontWeight.w600)),

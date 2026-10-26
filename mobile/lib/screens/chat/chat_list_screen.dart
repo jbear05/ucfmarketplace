@@ -26,6 +26,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final provider = context.watch<ChatProvider>();
 
     return Scaffold(
@@ -35,10 +36,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
         centerTitle: false,
       ),
       body: provider.isLoading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(color: AppTheme.primary))
           : provider.threads.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -117,7 +118,7 @@ class _ThreadTile extends StatelessWidget {
               child: thread.listingSnapshot?.mainImage == null
                   ? Text(
                       otherName[0].toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: AppTheme.primary,
                           fontWeight: FontWeight.w700,
                           fontSize: 18),
@@ -164,7 +165,7 @@ class _ThreadTile extends StatelessWidget {
                   if (thread.listingSnapshot != null)
                     Text(
                       thread.listingSnapshot!.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.primary,
                           fontWeight: FontWeight.w500),
@@ -258,8 +259,8 @@ class _ThreadTile extends StatelessWidget {
             ),
             ListTile(
               leading:
-                  const Icon(Icons.delete_outline_rounded, color: AppTheme.error),
-              title: const Text('Delete Conversation',
+                  Icon(Icons.delete_outline_rounded, color: AppTheme.error),
+              title: Text('Delete Conversation',
                   style: TextStyle(color: AppTheme.error)),
               onTap: () {
                 Navigator.pop(context);

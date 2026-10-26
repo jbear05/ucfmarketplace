@@ -22,6 +22,7 @@ class _KnightMarketAppState extends State<KnightMarketApp> {
   late final AuthProvider     _auth;
   late final ListingsProvider _listings;
   late final ChatProvider     _chat;
+  late final ThemeController  _theme;
   late final GoRouter         _router;
 
   @override
@@ -30,7 +31,10 @@ class _KnightMarketAppState extends State<KnightMarketApp> {
     _auth     = AuthProvider();
     _listings = ListingsProvider();
     _chat     = ChatProvider();
+    _theme    = ThemeController();
     _router   = createRouter(_auth);
+
+    _theme.load();
 
     _auth.tryRestoreSession().then((_) {
       if (_auth.isAuthenticated) {
@@ -47,12 +51,20 @@ class _KnightMarketAppState extends State<KnightMarketApp> {
         ChangeNotifierProvider.value(value: _auth),
         ChangeNotifierProvider.value(value: _listings),
         ChangeNotifierProvider.value(value: _chat),
+        ChangeNotifierProvider.value(value: _theme),
       ],
-      child: MaterialApp.router(
-        title:           'KnightMarket',
-        debugShowCheckedModeBanner: false,
-        theme:           AppTheme.darkTheme,
-        routerConfig:    _router,
+      // Rebuilds MaterialApp's `theme:` on toggle. Individual screens each
+      // call context.watch<ThemeController>() too (not just this root) —
+      // deliberately not remounting the whole tree via a key here, since
+      // that would reset the navigation stack (kick the user back to the
+      // home screen) every time they flip the switch in Settings.
+      child: Consumer<ThemeController>(
+        builder: (context, themeController, _) => MaterialApp.router(
+          title:           'KnightMarket',
+          debugShowCheckedModeBanner: false,
+          theme:           AppTheme.darkTheme,
+          routerConfig:    _router,
+        ),
       ),
     );
   }

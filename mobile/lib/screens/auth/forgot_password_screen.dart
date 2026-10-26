@@ -46,6 +46,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
@@ -68,11 +69,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       color: AppTheme.success.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.mark_email_read_rounded,
+                    child: Icon(Icons.mark_email_read_rounded,
                         size: 44, color: AppTheme.success),
                   ),
                   const SizedBox(height: 24),
-                  const Text('Email sent!',
+                  Text('Email sent!',
                       style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -82,7 +83,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     'Check your inbox for a reset link sent to ${_emailController.text}. '
                     'Tap the link — it will open in your browser to set a new password.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 14),
+                    style: TextStyle(color: AppTheme.textSecondary, height: 1.5, fontSize: 14),
                   ),
                   const SizedBox(height: 32),
                   SizedBox(
@@ -97,7 +98,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     onPressed: () {
                       setState(() => _sent = false);
                     },
-                    child: const Text("Didn't get it? Try again",
+                    child: Text("Didn't get it? Try again",
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                   ),
                 ],
@@ -105,13 +106,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Forgot your password?',
+                  Text('Forgot your password?',
                       style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary)),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Enter your email and we'll send you a reset link.",
                     style: TextStyle(
                         fontSize: 14, color: AppTheme.textSecondary),

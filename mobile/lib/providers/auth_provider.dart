@@ -66,11 +66,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> register({required String name, required String email, required String password}) async {
+  Future<String?> register({
+    required String name,
+    required String email,
+    required String password,
+    required bool agreedToRules,
+  }) async {
     _isLoading = true;
     notifyListeners();
     try {
-      await _api.post('/auth/register', data: {'name': name, 'email': email, 'password': password});
+      await _api.post('/auth/register', data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'agreedToRules': agreedToRules,
+      });
       return null;
     } on DioException catch (e) {
       return _extractError(e, 'Registration failed');
@@ -146,19 +156,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> updateName(String name) async {
+  Future<String?> updateProfile({String? name, String? classYear, bool? emailPriceDrop}) async {
     if (_user == null) return 'Not logged in';
     try {
-      final res = await _api.put('/auth/me', data: {'name': name});
-      final updated = User.fromJson(res.data['data']['user'] ?? res.data['data']);
-      _user = updated;
-      notifyListeners();
+      final res = await _api.put('/auth/me', data: {
+        if (name != null) 'name': name,
+        if (classYear != null) 'classYear': classYear,
+        if (emailPriceDrop != null) 'emailPriceDrop': emailPriceDrop,
+      });
+      applyUserUpdate(res.data['data']['user']);
       return null;
     } on DioException catch (e) {
-      return _extractError(e, 'Failed to save name');
-    } catch (e) {
-      return e.toString();
+      return _extractError(e, 'Failed to save settings');
     }
+  }
+
+  /// Replaces the signed-in user with a fresh copy from the server (e.g. the
+  /// `user` returned by an avatar upload).
+  void applyUserUpdate(Map<String, dynamic> userJson) {
+    _user = User.fromJson(userJson);
+    notifyListeners();
   }
 
   void updateAvatar(String avatarKey) {

@@ -61,6 +61,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final provider    = context.watch<ListingsProvider>();
     final filterCount = provider.filters.activeFilterCount;
     final selectedCategory = provider.filters.category;
@@ -77,7 +78,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Column(
                 children: [
                   Row(children: [
-                    const Text('KnightMarket',
+                    Text('KnightMarket',
                         style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
                             color: AppTheme.primary, letterSpacing: -0.5)),
                     const Spacer(),
@@ -90,7 +91,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppTheme.border),
                         ),
-                        child: const Row(children: [
+                        child: Row(children: [
                           Icon(Icons.map_outlined, size: 16, color: AppTheme.primary),
                           SizedBox(width: 4),
                           Text('Map', style: TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
@@ -109,7 +110,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           border: Border.all(color: AppTheme.border),
                         ),
                         child: Row(children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(left: 12),
                             child: Icon(Icons.search_rounded, color: AppTheme.textLight, size: 20),
                           ),
@@ -117,8 +118,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             child: TextField(
                               controller: _searchController,
                               onChanged: _onSearchChanged,
-                              style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
-                              decoration: const InputDecoration(
+                              style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+                              decoration: InputDecoration(
                                 hintText: 'Search items...',
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
@@ -156,7 +157,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               top: -4, right: -4,
                               child: Container(
                                 width: 16, height: 16,
-                                decoration: const BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                                decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
                                 alignment: Alignment.center,
                                 child: Text('$filterCount',
                                     style: const TextStyle(color: Colors.black, fontSize: 9, fontWeight: FontWeight.w700)),
@@ -219,9 +220,9 @@ class _ListingsBody extends StatelessWidget {
 
     if (provider.error != null) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.textLight),
+        Icon(Icons.wifi_off_rounded, size: 48, color: AppTheme.textLight),
         const SizedBox(height: 12),
-        Text(provider.error!, style: const TextStyle(color: AppTheme.textSecondary)),
+        Text(provider.error!, style: TextStyle(color: AppTheme.textSecondary)),
         const SizedBox(height: 16),
         ElevatedButton(
           onPressed: () => context.read<ListingsProvider>().fetchListings(reset: true),
@@ -231,7 +232,7 @@ class _ListingsBody extends StatelessWidget {
     }
 
     if (provider.listings.isEmpty) {
-      return const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.sell_outlined, size: 48, color: AppTheme.textLight),
         SizedBox(height: 12),
         Text('No listings found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
@@ -245,9 +246,22 @@ class _ListingsBody extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
         child: Row(children: [
           Text('${provider.totalCount} listing${provider.totalCount == 1 ? '' : 's'} found',
-              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
         ]),
       ),
+      if (provider.filters.sortBy == 'closest' && provider.locationError != null)
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppTheme.error.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
+          ),
+          child: Text(provider.locationError!,
+              style: TextStyle(fontSize: 12, color: AppTheme.error)),
+        ),
       Expanded(child: RefreshIndicator(
         color: AppTheme.primary,
         onRefresh: () => context.read<ListingsProvider>().fetchListings(reset: true),
@@ -255,12 +269,12 @@ class _ListingsBody extends StatelessWidget {
         controller: scrollController,
         padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 100),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 1, mainAxisSpacing: 12, childAspectRatio: 1.1,
+          crossAxisCount: 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: 0.72,
         ),
         itemCount: provider.listings.length + (provider.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == provider.listings.length) {
-            return const Center(child: Padding(
+            return Center(child: Padding(
               padding: EdgeInsets.all(20),
               child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
             ));

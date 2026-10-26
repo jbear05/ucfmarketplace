@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_theme.dart';
 import '../../models/message.dart';
 import '../../models/thread.dart';
@@ -89,7 +90,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('How did the exchange go?',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13), textAlign: TextAlign.center),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13), textAlign: TextAlign.center),
               const SizedBox(height: 16),
               StarRatingInput(value: score, onChanged: (v) => setDialogState(() => score = v)),
               const SizedBox(height: 16),
@@ -105,7 +106,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Skip', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text('Skip', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
@@ -126,6 +127,45 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(err ?? 'Thanks for your feedback!')),
       );
+    }
+  }
+
+  Future<void> _shareContact() async {
+    final ctrl = TextEditingController();
+    final phone = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Share your number?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This posts your number as a message in this conversation only — it is not shared anywhere else.',
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Phone number', hintText: '(407) 555-0100'),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
+            child: const Text('Share'),
+          ),
+        ],
+      ),
+    );
+    if (phone == null || phone.isEmpty || !mounted) return;
+    final err = await context.read<ChatProvider>().shareContact(widget.threadId, phone);
+    if (mounted && err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
     }
   }
 
@@ -163,6 +203,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final chat = context.watch<ChatProvider>();
     final auth = context.read<AuthProvider>();
     final messages = chat.messagesFor(widget.threadId);
@@ -196,7 +237,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             if (liveThread.listingSnapshot != null)
               Text(
                 '\$${liveThread.listingSnapshot!.price.toStringAsFixed(0)} • ${liveThread.listingSnapshot!.title}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppTheme.textSecondary),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -205,10 +246,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         ),
         actions: [
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
+            icon: Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
             onSelected: (val) async {
               if (val == 'meetup') {
                 _arrangeMeetup();
+              }
+              if (val == 'share_contact') {
+                _shareContact();
               }
               if (val == 'block') {
                 await chat.blockThread(widget.threadId);
@@ -242,7 +286,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             },
             itemBuilder: (_) => [
               if (liveThread.meetup.status == 'none' || liveThread.meetup.status == 'cancelled')
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'meetup',
                   child: Row(children: [
                     Icon(Icons.location_on_rounded, size: 18, color: AppTheme.primary),
@@ -251,6 +295,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   ]),
                 ),
               PopupMenuItem(
+                value: 'share_contact',
+                child: Row(children: [
+                  Icon(Icons.phone_rounded, size: 18, color: AppTheme.primary),
+                  SizedBox(width: 10),
+                  Text('Share my number'),
+                ]),
+              ),
+              PopupMenuItem(
                 value: 'block',
                 child: Row(children: [
                   Icon(Icons.block_rounded, size: 18, color: isBlocked ? AppTheme.error : AppTheme.warning),
@@ -258,7 +310,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   Text(isBlocked ? 'Unblock conversation' : 'Block conversation'),
                 ]),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
                 child: Row(children: [
                   Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
@@ -278,7 +330,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               width: double.infinity,
               color: AppTheme.error.withValues(alpha: 0.12),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: const Row(children: [
+              child: Row(children: [
                 Icon(Icons.block_rounded, size: 16, color: AppTheme.error),
                 SizedBox(width: 8),
                 Expanded(
@@ -302,7 +354,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           // Messages
           Expanded(
             child: messages.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text('No messages yet. Say hello!',
                         style: TextStyle(color: AppTheme.textSecondary)),
                   )
@@ -329,7 +381,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                                   const EdgeInsets.symmetric(vertical: 12),
                               child: Text(
                                 _formatDate(msg.createdAt),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11,
                                     color: AppTheme.textLight),
                               ),
@@ -365,13 +417,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       enabled: !isBlocked,
                       maxLines: null,
                       textCapitalization: TextCapitalization.sentences,
-                      style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
+                      style: TextStyle(fontSize: 15, color: AppTheme.textPrimary),
                       decoration: InputDecoration(
                         hintText: isBlocked ? 'Conversation blocked' : 'Message...',
                         border: InputBorder.none,
                         contentPadding:
                             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        hintStyle: const TextStyle(color: AppTheme.textLight),
+                        hintStyle: TextStyle(color: AppTheme.textLight),
                       ),
                     ),
                   ),
@@ -418,6 +470,39 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 }
 
+/// Opens Google Maps with the meetup as the destination — uses the native
+/// app if installed, falls back to the browser otherwise. Prefers an exact
+/// pin when we have one; falls back to a text search on the address.
+/// Hands the confirmed meetup off to the phone's own calendar/reminder
+/// system — no push infrastructure needed, and the user picks their own
+/// reminder lead time same as any other calendar event. Uses a Google
+/// Calendar template link (opens the Calendar app if installed, the web
+/// otherwise) rather than a native calendar plugin — add_2_calendar's
+/// bundled Android build script has an upstream Kotlin/Gradle
+/// incompatibility with this project, so this reuses the same url_launcher
+/// approach already proven for "Get Directions" instead.
+Future<void> _addToCalendar(ThreadMeetup meetup, String otherPersonName) async {
+  final start = meetup.scheduledAt ?? DateTime.now().add(const Duration(hours: 1));
+  final end = start.add(const Duration(minutes: 30));
+  String fmt(DateTime d) => d.toUtc().toIso8601String().replaceAll(RegExp(r'[-:]|\.\d+'), '');
+
+  final uri = Uri.https('calendar.google.com', '/calendar/render', {
+    'action': 'TEMPLATE',
+    'text': 'KnightMarket meetup with $otherPersonName',
+    'dates': '${fmt(start)}/${fmt(end)}',
+    'details': 'Arranged via KnightMarket',
+    'location': meetup.address ?? '',
+  });
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+Future<void> _openDirections(ThreadMeetup meetup) async {
+  final uri = (meetup.lat != null && meetup.lng != null)
+      ? Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${meetup.lat},${meetup.lng}')
+      : Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(meetup.address ?? '')}');
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
 class _MeetupBanner extends StatelessWidget {
   final Thread thread;
   final String currentUserId;
@@ -456,16 +541,25 @@ class _MeetupBanner extends StatelessWidget {
             : 'Meetup proposed';
         if (!isProposer) {
           actions = [
-            TextButton(onPressed: onCancel, child: const Text('Decline', style: TextStyle(color: AppTheme.error))),
+            TextButton(onPressed: onCancel, child: Text('Decline', style: TextStyle(color: AppTheme.error))),
             ElevatedButton(onPressed: onConfirm, child: const Text('Confirm')),
           ];
         } else {
-          actions = [TextButton(onPressed: onCancel, child: const Text('Cancel', style: TextStyle(color: AppTheme.error)))];
+          actions = [TextButton(onPressed: onCancel, child: Text('Cancel', style: TextStyle(color: AppTheme.error)))];
         }
         break;
       case 'confirmed':
         headline = 'Meetup confirmed';
+        final otherPerson = thread.participants.firstWhere(
+          (p) => p.id != currentUserId,
+          orElse: () => ThreadParticipant(id: '', name: 'the other person'),
+        );
         actions = [
+          OutlinedButton.icon(
+            onPressed: () => _addToCalendar(meetup, otherPerson.name),
+            icon: const Icon(Icons.event_available_rounded, size: 16),
+            label: const Text('Add to Calendar'),
+          ),
           ElevatedButton.icon(
             onPressed: iConfirmedCompletion ? null : onComplete,
             icon: const Icon(Icons.handshake_rounded, size: 16),
@@ -497,22 +591,38 @@ class _MeetupBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.location_on_rounded, size: 16, color: AppTheme.primary),
+            Icon(Icons.location_on_rounded, size: 16, color: AppTheme.primary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(headline,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
             ),
           ]),
           if (meetup.address != null) ...[
             const SizedBox(height: 4),
-            Text(meetup.address!,
-                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
-                maxLines: 2, overflow: TextOverflow.ellipsis),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(meetup.address!,
+                      style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+                TextButton.icon(
+                  onPressed: () => _openDirections(meetup),
+                  icon: const Icon(Icons.directions_rounded, size: 16),
+                  label: const Text('Directions', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
           ],
           if (when != null) ...[
             const SizedBox(height: 2),
-            Text(when, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+            Text(when, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           ],
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 8),

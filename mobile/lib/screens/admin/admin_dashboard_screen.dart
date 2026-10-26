@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../config/app_theme.dart';
 import '../../services/api_service.dart';
@@ -95,6 +96,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       appBar: AppBar(
@@ -112,9 +114,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _error != null
-              ? Center(child: Text(_error!, style: const TextStyle(color: AppTheme.textSecondary)))
+              ? Center(child: Text(_error!, style: TextStyle(color: AppTheme.textSecondary)))
               : RefreshIndicator(
                   color: AppTheme.primary,
                   onRefresh: _loadAll,
@@ -182,7 +184,7 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
-    child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+    child: Text(text, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
   );
 }
 
@@ -211,9 +213,9 @@ class _StatGrid extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(s.value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary)),
+            Text(s.value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary)),
             const SizedBox(height: 4),
-            Text(s.label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+            Text(s.label, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           ],
         ),
       )).toList(),
@@ -243,7 +245,7 @@ class _UsersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (users.isEmpty) {
-      return const Center(child: Text('No users yet', style: TextStyle(color: AppTheme.textSecondary)));
+      return Center(child: Text('No users yet', style: TextStyle(color: AppTheme.textSecondary)));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -267,24 +269,24 @@ class _UsersTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      Flexible(child: Text(u['name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis)),
+                      Flexible(child: Text(u['name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), overflow: TextOverflow.ellipsis)),
                       if (isAdmin) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                          child: const Text('Admin', style: TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.w700)),
+                          child: Text('Admin', style: TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                       if (u['isVerifiedStudent'] == true) ...[
                         const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded, size: 14, color: AppTheme.primary),
+                        Icon(Icons.verified_rounded, size: 14, color: AppTheme.primary),
                       ],
                     ]),
                     const SizedBox(height: 2),
-                    Text(u['email'] ?? '', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
+                    Text(u['email'] ?? '', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary), overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text('Last active: ${_relativeTime(u['lastActiveAt'])}', style: const TextStyle(fontSize: 11, color: AppTheme.textLight)),
+                    Text('Last active: ${_relativeTime(u['lastActiveAt'])}', style: TextStyle(fontSize: 11, color: AppTheme.textLight)),
                   ],
                 ),
               ),
@@ -319,7 +321,7 @@ class _ListingsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (listings.isEmpty) {
-      return const Center(child: Text('No listings yet', style: TextStyle(color: AppTheme.textSecondary)));
+      return Center(child: Text('No listings yet', style: TextStyle(color: AppTheme.textSecondary)));
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -343,9 +345,9 @@ class _ListingsTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(l['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(l['title'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text('\$${l['price']} · ${owner ?? 'unknown owner'}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    Text('\$${l['price']} · ${owner ?? 'unknown owner'}', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                     const SizedBox(height: 6),
                     Row(children: [
                       Container(
@@ -358,7 +360,7 @@ class _ListingsTab extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                          child: const Text('⚡ Boosted', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+                          child: Text('⚡ Boosted', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.primary)),
                         ),
                       ],
                     ]),

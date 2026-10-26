@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_theme.dart';
 import '../../models/listing.dart';
 import '../../providers/auth_provider.dart';
@@ -10,6 +11,20 @@ import '../../providers/listings_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../utils/listing_status.dart';
 import '../../widgets/star_rating.dart';
+
+Future<void> _openDirectionsToListing(Listing listing) async {
+  final uri = listing.coordinates != null
+      ? Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${listing.coordinates!.lat},${listing.coordinates!.lng}')
+      : Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('${listing.campus}, UCF')}');
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+}
+
+String _postedAgo(DateTime createdAt) {
+  final diff = DateTime.now().difference(createdAt);
+  if (diff.inDays >= 1) return 'Posted ${diff.inDays}d ago';
+  if (diff.inHours >= 1) return 'Posted ${diff.inHours}h ago';
+  return 'Posted just now';
+}
 
 class ListingDetailScreen extends StatefulWidget {
   final String listingId;
@@ -70,17 +85,18 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+        body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
       );
     }
 
     if (_listing == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Listing')),
-        body: const Center(
+        body: Center(
           child: Text('Listing not found', style: TextStyle(color: AppTheme.textSecondary)),
         ),
       );
@@ -143,7 +159,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
               background: listing.images.isEmpty
                   ? Container(
                       color: AppTheme.divider,
-                      child: const Icon(Icons.home_rounded,
+                      child: Icon(Icons.home_rounded,
                           size: 60, color: AppTheme.textLight),
                     )
                   : Stack(
@@ -195,7 +211,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     children: [
                       Text(
                         '\$${listing.price.toStringAsFixed(0)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w800,
                             color: AppTheme.textPrimary,
@@ -209,27 +225,46 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   // Title
                   Text(
                     listing.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary,
                         letterSpacing: -0.3),
                   ),
                   const SizedBox(height: 6),
-                  // Meetup area
+                  // Campus (coarse public location — exact meetup spot is
+                  // negotiated privately in chat)
                   Row(
                     children: [
-                      const Icon(Icons.location_on_rounded,
+                      Icon(Icons.location_on_rounded,
                           size: 14, color: AppTheme.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          listing.meetupArea,
-                          style: const TextStyle(
+                          listing.campus,
+                          style: TextStyle(
                               fontSize: 14, color: AppTheme.textSecondary),
                         ),
                       ),
+                      Text(
+                        _postedAgo(listing.createdAt),
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.textLight),
+                      ),
                     ],
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => _openDirectionsToListing(listing),
+                      icon: const Icon(Icons.directions_rounded, size: 16),
+                      label: const Text('Get Directions', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 20),
@@ -237,7 +272,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   const SizedBox(height: 20),
 
                   // Key details grid
-                  const Text('Item Details',
+                  Text('Item Details',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -263,7 +298,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   const SizedBox(height: 24),
 
                   // Description
-                  const Text('About this place',
+                  Text('About this place',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -271,7 +306,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                   const SizedBox(height: 8),
                   Text(
                     listing.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         color: AppTheme.textSecondary,
                         height: 1.6),
@@ -283,61 +318,67 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
 
                   // Lister info
                   if (listing.owner != null) ...[
-                    const Text('Listed by',
+                    Text('Listed by',
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimary)),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: AppTheme.primaryLight,
-                          radius: 24,
-                          child: Text(
-                            listing.owner!.name.isNotEmpty
-                                ? listing.owner!.name[0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 18),
+                    GestureDetector(
+                      onTap: () => context.push('/users/${listing.owner!.id}'),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: AppTheme.primaryLight,
+                            radius: 24,
+                            child: Text(
+                              listing.owner!.name.isNotEmpty
+                                  ? listing.owner!.name[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 18),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              listing.owner!.name,
-                              style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary),
-                            ),
-                            if (listing.owner!.isVerifiedStudent)
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.verified_rounded,
-                                        size: 14, color: AppTheme.primary),
-                                    SizedBox(width: 4),
-                                    Text('Verified Student',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: AppTheme.primary,
-                                            fontWeight: FontWeight.w500)),
-                                  ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  listing.owner!.name,
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.textPrimary),
                                 ),
-                              ),
-                            StarRatingDisplay(
-                              rating: listing.owner!.ratingAvg,
-                              count: listing.owner!.ratingCount,
+                                if (listing.owner!.isVerifiedStudent)
+                                  Padding(
+                                    padding: EdgeInsets.only(bottom: 4),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.verified_rounded,
+                                            size: 14, color: AppTheme.primary),
+                                        SizedBox(width: 4),
+                                        Text('Verified Student',
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.primary,
+                                                fontWeight: FontWeight.w500)),
+                                      ],
+                                    ),
+                                  ),
+                                StarRatingDisplay(
+                                  rating: listing.owner!.ratingAvg,
+                                  count: listing.owner!.ratingCount,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: AppTheme.textLight),
+                        ],
+                      ),
                     ),
                   ],
 
@@ -346,7 +387,7 @@ class _ListingDetailScreenState extends State<ListingDetailScreen> {
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 16),
-                    const Text('Manage Listing',
+                    Text('Manage Listing',
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
@@ -505,7 +546,7 @@ class _DetailChip extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w700, color: c)),
             Text(sublabel,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 11, color: AppTheme.textSecondary)),
           ],
         ),

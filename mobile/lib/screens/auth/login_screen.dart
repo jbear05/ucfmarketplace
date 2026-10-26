@@ -78,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final isLoading = context.watch<AuthProvider>().isLoading;
 
     return Scaffold(
@@ -110,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: Colors.white, size: 22),
                     ),
                     const SizedBox(width: 10),
-                    const Text('KnightMarket',
+                    Text('KnightMarket',
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -125,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: Colors.white,
                         letterSpacing: -0.5)),
                 const SizedBox(height: 6),
-                const Text('Sign in to your account',
+                Text('Sign in to your account',
                     style: TextStyle(
                         fontSize: 15, color: AppTheme.textSecondary)),
                 const SizedBox(height: 32),
@@ -173,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () => context.push('/forgot-password'),
-                    child: const Text('Forgot password?',
+                    child: Text('Forgot password?',
                         style: TextStyle(color: AppTheme.primary)),
                   ),
                 ),
@@ -197,14 +198,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFFFCC00))),
                         ]),
                         const SizedBox(height: 6),
-                        const Text('Check your inbox and click the verification link. Then come back and log in.',
+                        Text('Check your inbox and click the verification link. Then come back and log in.',
                             style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4)),
                         const SizedBox(height: 10),
                         GestureDetector(
                           onTap: _resendLoading ? null : _resendVerification,
                           child: Text(
                             _resendLoading ? 'Sending...' : 'Resend verification email →',
-                            style: const TextStyle(fontSize: 13, color: AppTheme.primary, fontWeight: FontWeight.w600),
+                            style: TextStyle(fontSize: 13, color: AppTheme.primary, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -231,11 +232,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Don't have an account? ",
+                    Text("Don't have an account? ",
                         style: TextStyle(color: AppTheme.textSecondary)),
                     GestureDetector(
                       onTap: () => context.pushReplacement('/register'),
-                      child: const Text('Sign up',
+                      child: Text('Sign up',
                           style: TextStyle(
                               color: AppTheme.primary,
                               fontWeight: FontWeight.w600)),

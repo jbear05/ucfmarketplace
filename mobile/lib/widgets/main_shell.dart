@@ -22,10 +22,12 @@ class MainShell extends StatelessWidget {
       case 1: context.go('/favorites'); break;
       case 2:
         final auth = context.read<AuthProvider>();
-        if (auth.isAuthenticated) {
-          context.push('/create');
-        } else {
+        if (!auth.isAuthenticated) {
           context.push('/login');
+        } else if (!auth.user!.hasSeenPhotoPrompt && auth.user!.avatarUrl == null) {
+          context.push('/photo-prompt', extra: '/create');
+        } else {
+          context.push('/create');
         }
         break;
       case 3: context.go('/messages');  break;
@@ -35,6 +37,7 @@ class MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<ThemeController>();
     final location  = GoRouterState.of(context).matchedLocation;
     final index     = _locationToIndex(location);
     final unread    = context.watch<ChatProvider>().unread;
@@ -44,7 +47,7 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppTheme.border, width: 0.5)),
         ),
         child: BottomNavigationBar(
@@ -60,7 +63,7 @@ class MainShell extends StatelessWidget {
           items: [
             const BottomNavigationBarItem(
               icon: Icon(Icons.search_rounded),
-              label: 'Explore',
+              label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Stack(
@@ -85,10 +88,11 @@ class MainShell extends StatelessWidget {
                 ],
               ),
               activeIcon: const Icon(Icons.favorite_rounded),
-              label: '',
+              label: 'Saved',
             ),
             // Center + button
             BottomNavigationBarItem(
+              label: 'Sell',
               icon: Container(
                 width: 44,
                 height: 44,
@@ -105,7 +109,6 @@ class MainShell extends StatelessWidget {
                 ),
                 child: const Icon(Icons.add_rounded, color: Colors.black, size: 26),
               ),
-              label: '',
             ),
             // Messages with badge
             BottomNavigationBarItem(
@@ -130,12 +133,12 @@ class MainShell extends StatelessWidget {
                     ),
                 ],
               ),
-              label: 'Messages',
+              label: 'Chats',
             ),
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline_rounded),
               activeIcon: Icon(Icons.person_rounded),
-              label: 'Profile',
+              label: 'You',
             ),
           ],
         ),
