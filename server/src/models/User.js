@@ -96,6 +96,35 @@ const userSchema = new mongoose.Schema(
       type:    Number,
       default: 0,
     },
+
+    // ── Profile ───────────────────────────────────────────────────────────────
+    // Uploaded profile photo (Cloudinary URL). Null until the user adds one.
+    avatarUrl: {
+      type:    String,
+      default: null,
+    },
+    // Two-digit graduating class, e.g. "27"
+    classYear: {
+      type:      String,
+      trim:      true,
+      maxlength: [4, 'Class year cannot exceed 4 characters'],
+    },
+    // The one-time "add a profile photo" prompt was shown (and skipped or completed)
+    hasSeenPhotoPrompt: {
+      type:    Boolean,
+      default: false,
+    },
+    // When the user accepted the community rules at signup
+    agreedToRulesAt: {
+      type: Date,
+    },
+
+    // ── Email preferences ─────────────────────────────────────────────────────
+    // Price drops on favorited listings + new matches for saved searches
+    emailPriceDrop: {
+      type:    Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true, // adds createdAt, updatedAt automatically
@@ -126,6 +155,24 @@ userSchema.methods.toPublicProfile = function () {
     isVerifiedStudent: this.isVerifiedStudent,
     role:              this.role,
     favorites:         this.favorites,
+    ratingAvg:         this.ratingAvg,
+    ratingCount:       this.ratingCount,
+    avatarUrl:         this.avatarUrl,
+    classYear:         this.classYear,
+    hasSeenPhotoPrompt: this.hasSeenPhotoPrompt,
+    emailPriceDrop:    this.emailPriceDrop,
+    createdAt:         this.createdAt,
+  };
+};
+
+// ── Instance method: what other users can see on a seller profile ───────────
+userSchema.methods.toSellerProfile = function () {
+  return {
+    _id:               this._id,
+    name:              this.name,
+    avatarUrl:         this.avatarUrl,
+    isVerifiedStudent: this.isVerifiedStudent,
+    classYear:         this.classYear,
     ratingAvg:         this.ratingAvg,
     ratingCount:       this.ratingCount,
     createdAt:         this.createdAt,

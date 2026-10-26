@@ -28,15 +28,21 @@ Black-and-gold visual identity throughout, matching the Knights.
 
 ## Features
 
-- **Student-verified accounts** — registering with a `.edu` email automatically grants a
-  "Verified Student" badge; every account still requires email confirmation before first login.
-- **Listings** — title, description, price, category, condition, and up to 3 photos per item,
-  hosted and auto-optimized via Cloudinary.
-- **Browse & filter** — search by keyword, filter by category/condition/price range, newest-first
-  feed with paid boosts able to float a listing to the top for a set window of time.
-- **Map-based meetup arranging** — instead of listing a home address, sellers give a general
-  public area (e.g. "Near the Student Union"). The exact meetup spot and time get proposed,
-  confirmed, and tracked per-conversation directly on an interactive map inside the chat thread.
+- **UCF-only accounts** — registration accepts only `@ucf.edu` / `@knights.ucf.edu` emails and
+  requires agreeing to the community rules; every account still requires email confirmation
+  before first login.
+- **Profiles** — optional profile photo (asked once, before a user's first listing), class year,
+  and a public seller profile with sales count, rating, and active listings.
+- **Listings** — title, description, price, category, condition, campus, an "AI-generated"
+  disclosure tag, and up to 3 photos per item, hosted and auto-optimized via Cloudinary.
+- **Browse & filter** — search by keyword, filter by category/condition/campus/price range, hide
+  AI-generated items, and sort by newest, price, or closest to you, with paid boosts able to
+  float a listing to the top for a set window of time.
+- **Saved searches & alerts** — save a set of filters and get a daily email about new matches,
+  plus price-drop emails for favorited listings (one switch in Settings turns both off).
+- **Campus meetup arranging** — instead of listing a home address, sellers pick a campus. The
+  exact meetup spot (from a curated list of public campus locations) and time get proposed,
+  confirmed, and tracked per-conversation inside the chat thread.
 - **Real-time chat** — Socket.IO-backed messaging with unread badges, block/delete conversations,
   and an in-thread system for proposing a meetup, confirming it, and marking the exchange
   complete once payment has changed hands in person.
@@ -186,10 +192,12 @@ where a persistent connection wouldn't add anything.
 
 | Group | Examples |
 |---|---|
-| `/api/auth` | register, login, verify email, forgot/reset password, resend verification |
+| `/api/auth` | register, login, verify email, forgot/reset password, resend verification, update profile, upload avatar |
 | `/api/listings` | list/search/filter, create, update, status, favorite, map pins |
 | `/api/threads` | list conversations, send message, propose/confirm/complete meetup, rate, contact admin |
 | `/api/ratings` | fetch a user's received ratings |
+| `/api/users` | public seller profile |
+| `/api/saved-searches` | list, save, delete saved searches |
 | `/api/admin` | platform stats, user management, listing moderation & boost |
 
 Every response follows one envelope shape — `{ success, message, data }` on success,

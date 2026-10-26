@@ -7,6 +7,14 @@
 // description (e.g. "Near the Student Union") doesn't resolve to a real place.
 const UCF_CAMPUS_CENTER = [-81.2001, 28.6024]; // [lng, lat]
 
+// Approximate center of each campus — the map pin for a listing. [lng, lat]
+const CAMPUS_CENTERS = {
+  'Main Campus': UCF_CAMPUS_CENTER,
+  'Downtown':    [-81.3880, 28.5450],
+  'Rosen':       [-81.4422, 28.4283],
+  'Lake Nona':   [-81.2797, 28.3683],
+};
+
 /**
  * Convert a general area description (e.g. "Near the Student Union") to
  * approximate [longitude, latitude] coordinates near campus.
@@ -35,4 +43,4 @@ const geocodeArea = async (area, city = 'Orlando', state = 'FL') => {
   }
 };
 
-module.exports = { geocodeArea, UCF_CAMPUS_CENTER };
+module.exports = { geocodeArea, UCF_CAMPUS_CENTER, CAMPUS_CENTERS };

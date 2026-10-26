@@ -18,7 +18,7 @@ const listingStorage = new CloudinaryStorage({
   },
 });
 
-// Storage for profile avatars (future use)
+// Storage for profile avatars
 const avatarStorage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -40,6 +40,16 @@ const uploadListingImages = multer({
   },
 });
 
-const uploadAvatar = multer({ storage: avatarStorage });
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits:  { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  },
+});
 
 module.exports = { cloudinary, uploadListingImages, uploadAvatar };

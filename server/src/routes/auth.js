@@ -7,6 +7,8 @@ const {
   login,
   getMe,
   updateMe,
+  uploadMyAvatar,
+  markPhotoPromptSeen,
   forgotPassword,
   showResetPasswordForm,
   resetPassword,
@@ -14,8 +16,10 @@ const {
 } = require('../controllers/authController');
 
 const { protect } = require('../middleware/auth');
+const { uploadAvatar } = require('../config/cloudinary');
 const {
   registerRules,
+  updateMeRules,
   loginRules,
   forgotPasswordRules,
   resetPasswordRules,
@@ -33,6 +37,8 @@ router.post('/resend-verification',  forgotPasswordRules, validate, resendVerifi
 
 // Protected routes
 router.get('/me',  protect, getMe);
-router.put('/me',  protect, updateMe);
+router.put('/me',  protect, updateMeRules, validate, updateMe);
+router.post('/me/avatar',            protect, uploadAvatar.single('avatar'), uploadMyAvatar);
+router.post('/me/photo-prompt-seen', protect, markPhotoPromptSeen);
 
 module.exports = router;

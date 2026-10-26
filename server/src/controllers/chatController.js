@@ -294,12 +294,14 @@ const proposeMeetup = async (req, res) => {
     }
 
     const { address, lat, lng, scheduledAt } = req.body;
-    if (!address || lat === undefined || lng === undefined) {
-      return errorResponse(res, 'A meetup address and location are required', 400);
+    if (!address) {
+      return errorResponse(res, 'A meetup spot is required', 400);
     }
+    // Coordinates are optional — a curated spot is identified by name
+    const hasCoords = lat !== undefined && lng !== undefined;
 
     thread.meetup = {
-      location:    { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+      location:    hasCoords ? { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] } : undefined,
       address,
       scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
       proposedBy:  req.user._id,
